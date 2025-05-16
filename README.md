@@ -22,9 +22,8 @@ This repository contains the source code for a JavaFX-based Quiz Application. It
 
 * **Java:** The primary programming language.
 * **JavaFX:** A GUI toolkit for building desktop applications.
-* **Maven:** A build automation and dependency management tool.
-* **(Likely) Database:** MySQL or a similar relational database (inferred from common Java application setups).
-* **(Potentially) JDBC:** For database connectivity.
+* **Database:** MySQL or a similar relational database (inferred from common Java application setups).
+* **JDBC:** For database connectivity.
 
 ## Prerequisites
 
@@ -32,7 +31,7 @@ Before running the application, ensure you have the following installed:
 
 * **Java Development Kit (JDK):** Version 8 or higher is recommended.
 * **Maven:** Download and install Maven from [https://maven.apache.org/download.cgi](https://maven.apache.org/download.cgi).
-* **(Likely) Database:** If the application uses a database, ensure it is installed and running (e.g., MySQL). You might need to create a database schema and user for the application.
+* **Database:** If the application uses a database, ensure it is installed and running (e.g., MySQL). You might need to create a database schema and user for the application.
 
 ## Setup and Installation
 
@@ -91,8 +90,11 @@ This project is licensed under the [Apache 2.0 License](LICENSE).
 
 ## Author
 
-[Your Name/GitHub Username (prem1310)]
+[Prem Vishwakarma/GitHub Username (prem1310)]
 
 ## Acknowledgements
 
-(Optional) Mention any libraries, frameworks, or resources that were particularly helpful in developing this application.
+https://github.com/user-attachments/assets/77a663c7-d4b4-46d5-8be1-0766070079ce
+
+
+
