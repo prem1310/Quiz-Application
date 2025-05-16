@@ -19,6 +19,7 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.sql.*;
+import java.util.Arrays; // Import the Arrays class
 
 public class DashboardPage {
 
@@ -101,9 +102,13 @@ public class DashboardPage {
         activityCard.setEffect(shadow);
 
         // Get recent activities from database
-        activityCard.getChildren().addAll(
-                getRecentActivities()
-        );
+        VBox[] activities = getRecentActivities();
+        activityCard.getChildren().clear(); // Clear any previous content
+        if (activities != null) {
+            activityCard.getChildren().addAll(activities);
+        } else {
+            activityCard.getChildren().add(new Label("Failed to load recent activities."));
+        }
 
         activitySection.getChildren().addAll(activityTitle, activityCard);
 
@@ -128,68 +133,59 @@ public class DashboardPage {
             activityCard.setMaxWidth(Region.USE_COMPUTED_SIZE); // Allow resizing if needed
         }
     }
-    
+
     private VBox[] getRecentActivities() {
-        VBox[] activities = new VBox[3]; // Default to 3 placeholder activities
-        
+        java.util.List<VBox> activitiesList = new java.util.ArrayList<>();
         try (Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/quizapp_db", "root", "root");
              PreparedStatement ps = con.prepareStatement(
                      "SELECT category_name, score, attempted_at FROM result r " +
-                     "JOIN category c ON r.category_id = c.category_id " +
-                     "WHERE username = ? ORDER BY attempted_at DESC LIMIT 3")) {
-            
+                             "JOIN category c ON r.category_id = c.category_id " +
+                             "WHERE username = ? ORDER BY attempted_at DESC LIMIT 3")) {
+
             ps.setString(1, username);
             ResultSet rs = ps.executeQuery();
-            
-            int i = 0;
-            while (rs.next() && i < 3) {
+
+            while (rs.next()) {
                 String category = rs.getString("category_name");
                 int score = rs.getInt("score");
                 Timestamp dateTime = rs.getTimestamp("attempted_at");
-                
-                activities[i] = createActivityItem(
-                    "Completed " + category + " Quiz", 
-                    "Score: " + score , 
-                    formatTimestamp(dateTime)
-                );
-                i++;
+
+                activitiesList.add(createActivityItem(
+                        "Completed " + category + " Quiz",
+                        "Score: " + score,
+                        formatTimestamp(dateTime)
+                ));
             }
-            
-            // Fill remaining slots with placeholder if needed
-            while (i < 3) {
-                if (i == 0) {
-                    // No activities at all
-                    activities[0] = createEmptyActivityItem("No quiz activities yet", 
-                                                          "Take your first quiz to see your results here");
-                    i = 3; // Skip the rest
-                } else {
-                    activities[i] = createEmptyActivityItem("", "");
-                    i++;
+
+            // If no activities were found, add a "no activities" message
+            if (activitiesList.isEmpty()) {
+                activitiesList.add(createEmptyActivityItem("No quiz activities yet",
+                                                          "Take your first quiz to see your results here"));
+            } else {
+                // If fewer than 3 activities, fill with empty items to maintain layout consistency (optional)
+                while (activitiesList.size() < 3) {
+                    activitiesList.add(createEmptyActivityItem("", ""));
                 }
             }
-            
+
+            return activitiesList.toArray(new VBox[0]); // Convert List to array
+
         } catch (SQLException ex) {
             ex.printStackTrace();
-            // Create placeholder activities on error
-            activities[0] = createEmptyActivityItem("Could not load activities", 
-                                                  "Please check your database connection");
-            activities[1] = createEmptyActivityItem("", "");
-            activities[2] = createEmptyActivityItem("", "");
+            return null; // Return null in case of a database error
         }
-        
-        return activities;
     }
-    
+
     private String formatTimestamp(Timestamp ts) {
         if (ts == null) return "";
-        
+
         java.util.Date now = new java.util.Date();
         long diffInMillis = now.getTime() - ts.getTime();
         long diffInSeconds = diffInMillis / 1000;
         long diffInMinutes = diffInSeconds / 60;
         long diffInHours = diffInMinutes / 60;
         long diffInDays = diffInHours / 24;
-        
+
         if (diffInDays > 0) {
             return diffInDays + (diffInDays == 1 ? " day ago" : " days ago");
         } else if (diffInHours > 0) {
@@ -200,82 +196,82 @@ public class DashboardPage {
             return "Just now";
         }
     }
-    
+
     private VBox createActivityItem(String title, String detail, String time) {
         VBox item = new VBox(5);
         item.setPadding(new Insets(10, 5, 10, 10));
         item.setStyle("-fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;");
-        
+
         HBox content = new HBox();
         content.setAlignment(Pos.CENTER_LEFT);
-        
+
         // Activity indicator
         Rectangle indicator = new Rectangle(3, 20);
         indicator.setFill(Color.web("#4ECDC4"));
         indicator.setArcWidth(3);
         indicator.setArcHeight(3);
-        
+
         VBox textContent = new VBox(3);
         textContent.setPadding(new Insets(0, 0, 0, 10));
-        
+
         Label titleLabel = new Label(title);
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 14));
         titleLabel.setTextFill(Color.web("#2C3E50"));
-        
+
         HBox detailsBox = new HBox(15);
-        
+
         Label detailLabel = new Label(detail);
         detailLabel.setFont(Font.font("Segoe UI", 12));
         detailLabel.setTextFill(Color.web("#7F8C8D"));
-        
+
         Label timeLabel = new Label(time);
         timeLabel.setFont(Font.font("Segoe UI", 12));
         timeLabel.setTextFill(Color.web("#BDC3C7"));
-        
+
         detailsBox.getChildren().addAll(detailLabel, timeLabel);
         textContent.getChildren().addAll(titleLabel, detailsBox);
-        
+
         content.getChildren().addAll(indicator, textContent);
         item.getChildren().add(content);
-        
+
         return item;
     }
-    
+
     private VBox createEmptyActivityItem(String title, String message) {
         VBox item = new VBox(5);
         item.setPadding(new Insets(15));
         item.setAlignment(Pos.CENTER);
-        
+
         if (!title.isEmpty()) {
             Label titleLabel = new Label(title);
             titleLabel.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 14));
             titleLabel.setTextFill(Color.web("#2C3E50"));
-            
+
             Label messageLabel = new Label(message);
             messageLabel.setFont(Font.font("Segoe UI", 12));
             messageLabel.setTextFill(Color.web("#7F8C8D"));
-            
+
             item.getChildren().addAll(titleLabel, messageLabel);
         }
-        
+
         return item;
     }
-    
+
     private StackPane createProfileIcon(String username) {
         StackPane profilePane = new StackPane();
         profilePane.setCursor(javafx.scene.Cursor.HAND);
-        
+
         // Create circular background
         Circle circle = new Circle(18);
         circle.setFill(Color.web("#00ccaa"));
-        
+
         // Create label with first letter of username
         Label initial = new Label(username.substring(0, 1).toUpperCase());
         initial.setTextFill(Color.WHITE);
         initial.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
-        
+
         profilePane.getChildren().addAll(circle, initial);
-        
+
         // Add hover effect
         profilePane.setOnMouseEntered(e -> {
             circle.setFill(Color.web("#00e6bf"));
@@ -283,13 +279,13 @@ public class DashboardPage {
             profilePane.setScaleX(1.1);
             profilePane.setScaleY(1.1);
         });
-        
+
         profilePane.setOnMouseExited(e -> {
             circle.setFill(Color.web("#00ccaa"));
             profilePane.setScaleX(1.0);
             profilePane.setScaleY(1.0);
         });
-        
+
         return profilePane;
     }
 
@@ -300,7 +296,7 @@ public class DashboardPage {
         card.setPrefHeight(180);
         card.setAlignment(Pos.TOP_CENTER);
         card.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
-        
+
         // Add shadow effect
         DropShadow shadow = new DropShadow();
         shadow.setColor(Color.rgb(0, 0, 0, 0.1));
@@ -308,38 +304,38 @@ public class DashboardPage {
         shadow.setOffsetY(2);
         shadow.setRadius(10);
         card.setEffect(shadow);
-        
+
         Rectangle colorBar = new Rectangle(50, 5);
         colorBar.setFill(Color.web(color));
         colorBar.setArcWidth(5);
         colorBar.setArcHeight(5);
-        
+
         Label iconLabel = new Label(icon);
         iconLabel.setFont(Font.font("Segoe UI", 24));
-        
+
         Label titleLabel = new Label(title);
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 16));
         titleLabel.setTextFill(Color.web("#2C3E50"));
-        
+
         Label valueLabel = new Label(value);
         valueLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 36));
         valueLabel.setTextFill(Color.web("#2C3E50"));
-        
+
         card.getChildren().addAll(colorBar, iconLabel, titleLabel, valueLabel);
-        
+
         // Add hover effect
         card.setOnMouseEntered(e -> {
             shadow.setRadius(15);
             shadow.setColor(Color.rgb(0, 0, 0, 0.2));
             card.setTranslateY(-2);
         });
-        
+
         card.setOnMouseExited(e -> {
             shadow.setRadius(10);
             shadow.setColor(Color.rgb(0, 0, 0, 0.1));
             card.setTranslateY(0);
         });
-        
+
         return card;
     }
 
@@ -433,10 +429,10 @@ public class DashboardPage {
         GridPane.setConstraints(mobileField, 0, 3, 2, 1); // Span two columns
 
         formGrid.getChildren().addAll(new Label("Full Name"), nameField,
-                                    new Label("Email Address"), emailField,
-                                    new Label("Gender"), genderField,
-                                    new Label("Age"), ageField,
-                                    new Label("Mobile Number"), mobileField);
+                new Label("Email Address"), emailField,
+                new Label("Gender"), genderField,
+                new Label("Age"), ageField,
+                new Label("Mobile Number"), mobileField);
         int rowIndex = 0;
         for (javafx.scene.Node node : formGrid.getChildren()) {
             if (node instanceof Label) {
@@ -519,7 +515,7 @@ public class DashboardPage {
 
         profileStage.showAndWait();
     }
-    
+
     private TextField createStyledTextField(String promptText) {
         TextField textField = new TextField();
         textField.setPromptText(promptText);
@@ -528,19 +524,19 @@ public class DashboardPage {
         textField.setStyle("-fx-background-color: #f8f8f8; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-background-radius: 5;");
         return textField;
     }
-    
+
     private void disableFields(boolean disable) {
         nameField.setDisable(disable);
         emailField.setDisable(disable);
         genderField.setDisable(disable);
         ageField.setDisable(disable);
         mobileField.setDisable(disable);
-        
+
         // Change style based on state
-        String style = disable ? 
-            "-fx-background-color: #f8f8f8; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-background-radius: 5;" :
-            "-fx-background-color: white; -fx-border-color: #00ccaa; -fx-border-radius: 5; -fx-background-radius: 5;";
-        
+        String style = disable ?
+                "-fx-background-color: #f8f8f8; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-background-radius: 5;" :
+                "-fx-background-color: white; -fx-border-color: #00ccaa; -fx-border-radius: 5; -fx-background-radius: 5;";
+
         nameField.setStyle(style);
         emailField.setStyle(style);
         genderField.setStyle(style);
@@ -550,17 +546,17 @@ public class DashboardPage {
 
     private boolean validateFields() {
         StringBuilder errors = new StringBuilder();
-        
+
         if (nameField.getText().trim().isEmpty()) {
             errors.append("- Name cannot be empty\n");
         }
-        
+
         if (emailField.getText().trim().isEmpty()) {
             errors.append("- Email cannot be empty\n");
         } else if (!emailField.getText().matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
             errors.append("- Invalid email format\n");
         }
-        
+
         if (!ageField.getText().trim().isEmpty()) {
             try {
                 int age = Integer.parseInt(ageField.getText().trim());
@@ -571,16 +567,16 @@ public class DashboardPage {
                 errors.append("- Age must be a number\n");
             }
         }
-        
+
         if (!mobileField.getText().trim().isEmpty() && !mobileField.getText().matches("^[0-9]{10}$")) {
             errors.append("- Mobile number should be 10 digits\n");
         }
-        
+
         if (errors.length() > 0) {
             showAlert(Alert.AlertType.ERROR, "Validation Error", errors.toString());
             return false;
         }
-        
+
         return true;
     }
 
@@ -597,7 +593,7 @@ public class DashboardPage {
                 mobileField.setText(rs.getString("mobile"));
             } else {
                 // No profile data yet, set defaults
-                nameField.setText(username);
+nameField.setText(username);
                 emailField.setText("");
                 genderField.setText("");
                 ageField.setText("");
@@ -620,14 +616,14 @@ public class DashboardPage {
             ps.setString(5, ageField.getText().trim());
             ps.setString(6, mobileField.getText().trim());
             ps.executeUpdate();
-            
+
             showSuccessMessage("Profile Updated", "Your profile has been updated successfully.");
         } catch (SQLException ex) {
             ex.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Database Error", "Failed to update profile: " + ex.getMessage());
         }
     }
-    
+
     private void showSuccessMessage(String title, String message) {
         // Create a custom success message that auto-dismisses
         Stage messageStage = new Stage();
@@ -712,13 +708,13 @@ public class DashboardPage {
         }
         return -1;
     }
-    
+
     private int getAverageScore(String user) {
         try (Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/quizapp_db", "root", "root");
              PreparedStatement ps = con.prepareStatement("SELECT AVG(score) FROM result WHERE username = ?")) {
             ps.setString(1, user);
             ResultSet rs = ps.executeQuery();
-            return rs.next() ? (int)Math.round(rs.getDouble(1)) : 0;
+            return rs.next() ? (int) Math.round(rs.getDouble(1)) : 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return 0;
@@ -730,11 +726,11 @@ public class DashboardPage {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
-        
+
         // Style the dialog
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: white;");
-        
+
         alert.showAndWait();
     }
 }
